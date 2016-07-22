@@ -1117,8 +1117,8 @@ InstancesCorrectly() {
     # Make an installation
     assert_raises "./ineo install -d $(pwd)/ineo_for_test" 0
 
-    assert_raises "./ineo create -a7474 -s8484 -b9494 -v $version -f twitter" 0
-    assert_raises "./ineo create -a7575 -s8585 -b9595 -v $version -f facebook" 0
+    assert_raises "./ineo create -a7474 -s8484 -b9494 -v $version twitter" 0
+    assert_raises "./ineo create -a7575 -s8585 -b9595 -v $version facebook" 0
 
     assert_raises "./ineo instances" 0
 
