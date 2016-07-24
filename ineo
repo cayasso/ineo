@@ -1163,7 +1163,7 @@ function versions {
 
   if [ ! -f $cache_file ] || [ ! -s $cache_file ] || [ "$update" == true ]; then
     while [ "$page" -eq 1 ] || [ ! -z "$fetch" ]; do
-      fetch="$(curl -s https://api.github.com/repos/neo4j/neo4j/releases?page=$page)"
+      fetch="$(curl -s https://api.github.com/repos/neo4j/neo4j/tags?page=$page)"
       fetch="$(echo $fetch | grep -o -E '"[0-9]+\.[0-9]+\.[0-9]+"' | sed 's/"/  /g')"
       releases+="$fetch\n"
       ((page++))
