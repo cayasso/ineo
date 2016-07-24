@@ -782,8 +782,6 @@ function set_http_address {
     fi
   fi
 
-  printf "=====$major_version_number $version\n"
-
   if [ $major_version_number -lt 3 ]; then
     sed -i.bak "/org\.neo4j\.server\.webserver\.address=/s/^#[ \t]*//g" \
       ${path}/neo4j-server.properties
@@ -806,8 +804,6 @@ function set_https_address {
   local https_address=$2
   local http_address=$(get_http_address "$instance_name")
   local path=${INEO_HOME}/instances/${instance_name}/conf
-
-  printf "ins: $instance_name https: $https_address"
 
   IFS=: read host port <<< "$default_https_address"
   IFS=: read _host _port <<< "$http_address"
