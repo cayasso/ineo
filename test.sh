@@ -1178,13 +1178,13 @@ VersionsWithIncorrectParameters() {
 
   local param
   for ((i=0; i<${#params[*]}; i+=2)); do
-    assert_raises "./ineo versions ${params[i]}" 1
-    assert        "./ineo versions ${params[i]}" \
+    assert_raises "./ineo list ${params[i]}" 1
+    assert        "./ineo list ${params[i]}" \
 "
   ${PURPLE}Error -> Invalid argument or option ${BOLD}${params[i+1]}
 
-  ${NF}View help about the command ${UNDERLINE}versions${NF} typing:
-    ${CYAN}ineo help versions${NF}
+  ${NF}View help about the command ${UNDERLINE}list${NF} typing:
+    ${CYAN}ineo help list${NF}
 "
   done
 
@@ -1199,8 +1199,8 @@ VersionsCorrectly() {
   # Make an installation
   assert_raises "./ineo install -d $(pwd)/ineo_for_test" 0
 
-  assert_raises "./ineo versions" 0
-  assert_raises "./ineo versions -u" 0
+  assert_raises "./ineo list" 0
+  assert_raises "./ineo list -u" 0
 
   assert_end VersionsCorrectly
 }
