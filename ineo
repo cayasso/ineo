@@ -1129,10 +1129,10 @@ function delete-db {
 }
 
 # ==============================================================================
-# VERSIONS
+# LIST
 # ==============================================================================
 
-function versions {
+function list {
   local update=false
 
   shift
@@ -1143,7 +1143,7 @@ function versions {
         update=true
         ;;
       *)
-        invalid_command_param $OPTARG 'versions'
+        invalid_command_param $OPTARG 'list'
         exit 1
         ;;
     esac
@@ -1151,7 +1151,7 @@ function versions {
 
   local arg2=${@:$OPTIND:1}
   if [ ! -z "$arg2" ]; then
-    invalid_command_param $arg2 'versions'
+    invalid_command_param $arg2 'list'
     exit 1
   fi
 
@@ -1182,7 +1182,7 @@ function versions {
     cat $cache_file | sed "s/$DEFAULT_VERSION/$DEFAULT_VERSION <- recommended and default for this Ineo's installation/"
     printf "\n  These are the Neo4j versions available until $updated_at\n"
     printf "\n  If you want to update this list type:"
-    printf "\n    ${CYAN}ineo versions -u${NF}\n\n"
+    printf "\n    ${CYAN}ineo list -u${NF}\n\n"
   fi
 
   if [ ! -z "$error" ]; then
@@ -1216,7 +1216,7 @@ HELP="
     create      Create a new instance with a specific <name>
     set-address Change the address of a specific instance <name>
     set-port    Change the port of a specific instance <name>
-    versions    Show the Neo4j versions available for installation
+    list        Show the Neo4j versions available for installation
     instances   Show the information about installed instances
 
     start       Start Neo4j instances
@@ -1303,9 +1303,9 @@ HELP_SET_PORT="
 
 "
 
-HELP_VERSIONS="
+HELP_LIST="
   USAGE:
-    versions
+    list
 
   DESCRIPTION:
     Show the Neo4j versions available for installation
@@ -1566,8 +1566,11 @@ case $COMMAND in
   update)
     update $@
     ;;
+  list)
+    list $@
+    ;;
   versions)
-    versions $@
+    list $@
     ;;
   version)
     version $@
