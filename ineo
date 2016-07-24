@@ -321,126 +321,6 @@ function update_script_batch {
 }
 
 # ==============================================================================
-# SET-ADDRESS
-# ==============================================================================
-
-# Command
-function set-address {
-  local https=false
-
-  shift
-  while getopts ":a:b:s" optname
-  do
-    case "${optname}" in
-      a)
-        http=true
-        ;;
-      b)
-        bolt=true
-        ;;
-      s)
-        https=true
-        ;;
-      *)
-        invalid_command_param $OPTARG 'set-address'
-        exit 1
-        ;;
-    esac
-  done
-
-  local instance_name=${@:$OPTIND:1}
-
-  shift
-  local arg2=${@:$OPTIND:1}
-  if [ ! -z "$arg2" ]; then
-    invalid_command_param $arg2 'set_address'
-    exit 1
-  fi
-
-  # The set-address create always requires an instance name
-  if [[ -z "$instance_name" ]]; then
-    printf "\n  ${PURPLE}Error -> ${BOLD}set-address${PURPLE} requires an instance name\n"
-    printf "\n  ${NF}View help about the command ${UNDERLINE}set_address${NF} typing:"
-    printf "\n    ${CYAN}ineo help set-address${NF}\n\n"
-    exit 1
-  fi
-
-  # Check if the configuration file doesn't exists
-  if [ ! -f "$INEO_HOME/instances/${instance_name}/conf/neo4j-server.properties" ]; then
-    printf "\n  ${PURPLE}Error -> There is not an instance with the name ${BOLD}${instance_name}${PURPLE} or is not properly installed\n"
-    printf "\n  ${NF}List installed instances typing:"
-    printf "\n    ${CYAN}ineo instances${NF}\n\n"
-    exit 1
-  fi
-
-  # Set the address on the configuration file
-  if [[ -n $http_address ]] ; then
-    http_address=$(set_http_address "$instance_name" "$http_address")
-    printf "\n  ${GREEN}The http address was successfully changed.${NF}\n\n"
-  fi
-
-  if [[ -n $https_address ]] ; then
-    local current_http_address=$(get_http_address "$instance_name")
-    set_https_address $instance_name $current_http_address $https_address
-    printf "\n  ${GREEN}The https address was successfully changed.${NF}\n\n"
-  fi
-
-  if [[ -n $bolt_address ]] ; then
-    set_bolt_address $instance_name $bolt_address
-    printf "\n  ${GREEN}The bolt address was successfully changed.${NF}\n\n"
-  fi
-
-}
-
-function get_http_address {
-  local major_version_number=${version%%.*}
-  local address=$DEFAULT_HTTP_ADDRESS
-  local instance_name=$1
-
-  if [ $major_version_number -lt 3 ]; then
-    port=$(sed -n '/^org\.neo4j\.server\.webserver\.port=\(.*\)$/s//\1/p' \
-      $INEO_HOME/instances/$instance_name/conf/neo4j-server.properties)
-    host=$(sed -n '/^org\.neo4j\.server\.webserver\.address=\(.*\)$/s//\1/p' \
-      $INEO_HOME/instances/$instance_name/conf/neo4j-server.properties)
-    address="$host:$port"
-  else
-    address=$(sed -n '/^dbms\.connector\.http\.address=\(.*\)$/s//\1/p' \
-      $INEO_HOME/instances/$instance_name/conf/neo4j.conf)
-  fi
-  echo "$address"
-}
-
-function get_https_address {
-  local major_version_number=${version%%.*}
-  local address=$DEFAULT_HTTPS_ADDRESS
-  local instance_name=$1
-
-  if [ $major_version_number -lt 3 ]; then
-    port=$(sed -n '/^org\.neo4j\.server\.webserver\.https\.port=\(.*\)$/s//\1/p' \
-      $INEO_HOME/instances/$instance_name/conf/neo4j-server.properties)
-    host=$(sed -n '/^org\.neo4j\.server\.webserver\.address=\(.*\)$/s//\1/p' \
-      $INEO_HOME/instances/$instance_name/conf/neo4j-server.properties)
-    address="$host:$port"
-  else
-    address=$(sed -n '/^dbms\.connector\.https\.address=\(.*\)$/s//\1/p' \
-      $INEO_HOME/instances/$instance_name/conf/neo4j.conf)
-  fi
-  echo "$address"
-}
-
-function get_bolt_address {
-  local major_version_number=${version%%.*}
-  local instance_name=$1
-  local address
-
-  if [ $major_version_number -gt 2 ]; then
-    address=$(sed -n '/^dbms\.connector\.bolt\.address=\(.*\)$/s//\1/p' \
-      $INEO_HOME/instances/$instance_name/conf/neo4j.conf)
-  fi
-  echo "$address"
-}
-
-# ==============================================================================
 # CREATE
 # ==============================================================================
 
@@ -546,111 +426,6 @@ function create {
   set_bolt_address $instance_name $bolt_address
 
   printf "\n  ${GREEN}The instance ${BOLD}${instance_name}${GREEN} was successfully created.${NF}\n\n"
-}
-
-function set_http_address {
-  local default_http_address=$DEFAULT_HTTP_ADDRESS
-  local major_version_number=${version%%.*}
-  local instance_name=$1
-  local http_address=$2
-  local path=${INEO_HOME}/instances/${instance_name}/conf
-
-  IFS=':' read host port <<< "$default_http_address"
-
-  if [[ -n $http_address ]] ; then
-    if [ "$http_address" -eq "$http_address" ] 2>/dev/null; then
-      port=$http_address
-    else
-      IFS=':' read h p <<< "$http_address"
-      [[ -n $h ]] && host="$h"
-      [[ -n $p ]] && port="$p"
-    fi
-  fi
-
-  if [ $major_version_number -lt 3 ]; then
-    sed -i.bak "/org\.neo4j\.server\.webserver\.address=/s/^#[ \t]*//g" \
-      ${path}/neo4j-server.properties
-    sed -i.bak "/org\.neo4j\.server\.webserver\.address=/s/[0-9]\.[0-9]\.[0-9]\.[0-9]/$host/" \
-      ${path}/neo4j-server.properties
-    sed -i.bak "/^\(org\.neo4j\.server\.webserver\.port=\).*/s//\1$port/" \
-      ${path}/neo4j-server.properties
-   else
-    sed -i.bak "/dbms\.connector\.http\.address=/s/^#[ \t]*//g" \
-      ${path}/neo4j.conf
-    sed -i.bak -E "/dbms\.connector\.http\.address/s/=.*\:[0-9]+$/=$host:$port/" \
-      ${path}/neo4j.conf
-  fi
-}
-
-function set_https_address {
-  local default_https_address=$DEFAULT_HTTPS_ADDRESS
-  local major_version_number=${version%%.*}
-  local instance_name=$1
-  local https_address=$2
-  local http_address=$(get_http_address "$instance_name")
-  local path=${INEO_HOME}/instances/${instance_name}/conf
-
-  IFS=: read host port <<< "$default_https_address"
-  IFS=: read _host _port <<< "$http_address"
-
-  local default_port="${port}"
-
-  if [[ -n $https_address ]] ; then
-    if [ "$https_address" -eq "$https_address" ] 2>/dev/null; then
-      port=$https_address
-    else
-      IFS=':' read h p <<< "$https_address"
-      [[ -n $h ]] && host="$h"
-      [[ -n $p ]] && port="$p"
-      [[ ! -n $p ]] && [[ "$default_port" = "$port" ]] && port=$((_port + 1))
-    fi
-  else
-    port=$((_port + 1))
-  fi
-
-  if [ $major_version_number -lt 3 ]; then
-    sed -i.bak "/^\(org\.neo4j\.server\.webserver\.https\.port=\).*/s//\1$port/" \
-      ${INEO_HOME}/instances/${instance_name}/conf/neo4j-server.properties
-  else
-    sed -i.bak "/dbms\.connector\.https\.address=/s/^#[ \t]*//" \
-      ${path}/neo4j.conf
-    sed -i.bak -E "/dbms\.connector\.https\.address/s/=.*\:[0-9]+$/=$host:$port/" \
-      ${path}/neo4j.conf
-  fi
-}
-
-function set_bolt_address {
-  local default_bolt_address=$DEFAULT_BOLT_ADDRESS
-  local major_version_number=${version%%.*}
-  local instance_name=$1
-  local bolt_address=$2
-  local http_address=$(get_http_address "$instance_name")
-  local path=${INEO_HOME}/instances/${instance_name}/conf
-
-  IFS=: read host port <<< "$default_bolt_address"
-  IFS=: read _host _port <<< "$http_address"
-
-  local default_port="${port}"
-
-  if [[ -n $bolt_address ]] ; then
-    if [ "$bolt_address" -eq "$bolt_address" ] 2>/dev/null; then
-      port=$bolt_address
-    else
-      IFS=':' read h p <<< "$bolt_address"
-      [[ -n $h ]] && host="$h"
-      [[ -n $p ]] && port="$p"
-      [[ ! -n $p ]] && [[ "$default_port" = "$port" ]] && port=$((_port + 2))
-    fi
-  else
-    port=$((_port + 2))
-  fi
-
-  if [[ -n $bolt_address ]] && [ $major_version_number -gt 2 ]; then
-    sed -i.bak "/dbms\.connector\.bolt\.address=/s/^#[ \t]*//" \
-      ${path}/neo4j.conf
-    sed -i.bak -E "/dbms\.connector\.bolt\.address/s/=.*\:[0-9]+$/=$host:$port/" \
-      ${path}/neo4j.conf
-  fi
 }
 
 # ==============================================================================
@@ -917,7 +692,233 @@ function instances {
   fi
 }
 
+# ==============================================================================
+# SET-ADDRESS
+# ==============================================================================
 
+# Command
+function set-address {
+
+  shift
+  while getopts ":a:b:s:" optname
+  do
+    case "${optname}" in
+      a)
+        http_address=${OPTARG}
+        ;;
+      b)
+        bolt_address=${OPTARG}
+        ;;
+      s)
+        https_address=${OPTARG}
+        ;;
+      *)
+        invalid_command_param $OPTARG 'set-address'
+        exit 1
+        ;;
+    esac
+  done
+  local instance_name=${@:$OPTIND:1}
+  local version=$(head -n 1 $INEO_HOME/instances/$instance_name/.version)
+
+  shift
+  local arg2=${@:$OPTIND:1}
+  if [ ! -z "$arg2" ]; then
+    invalid_command_param $arg2 'set-address'
+    exit 1
+  fi
+
+  # The set-address create always requires an instance name
+  if [[ -z "$instance_name" ]]; then
+    printf "\n  ${PURPLE}Error -> ${BOLD}set-address${PURPLE} requires an instance name\n"
+    printf "\n  ${NF}View help about the command ${UNDERLINE}set-address${NF} typing:"
+    printf "\n    ${CYAN}ineo help set-address${NF}\n\n"
+    exit 1
+  fi
+
+  # Check if the configuration file doesn't exists
+  if [ ! -f "$INEO_HOME/instances/${instance_name}/conf/neo4j-server.properties" ] &&
+     [ ! -f "$INEO_HOME/instances/${instance_name}/conf/neo4j.conf" ] ; then
+    printf "\n  ${PURPLE}Error -> There is not an instance with the name ${BOLD}${instance_name}${PURPLE} or is not properly installed\n"
+    printf "\n  ${NF}List installed instances typing:"
+    printf "\n    ${CYAN}ineo instances${NF}\n\n"
+    exit 1
+  fi
+
+  # Set the address on the configuration file
+  if [[ -n $http_address ]] ; then
+    set_http_address $instance_name $http_address
+    printf "\n  ${GREEN}The http address was successfully changed.${NF}\n\n"
+  fi
+
+  if [[ -n $https_address ]] ; then
+    set_https_address $instance_name $https_address
+    printf "\n  ${GREEN}The https address was successfully changed.${NF}\n\n"
+  fi
+
+  if [[ -n $bolt_address ]] ; then
+    set_bolt_address $instance_name $bolt_address
+    printf "\n  ${GREEN}The bolt address was successfully changed.${NF}\n\n"
+  fi
+
+}
+
+function set_http_address {
+  local default_http_address=$DEFAULT_HTTP_ADDRESS
+  local major_version_number=${version%%.*}
+  local instance_name=$1
+  local http_address=$2
+  local path=${INEO_HOME}/instances/${instance_name}/conf
+
+  IFS=: read host port <<< "$default_http_address"
+
+  if [[ -n $http_address ]] ; then
+    if [ "$http_address" -eq "$http_address" ] 2>/dev/null; then
+      port=$http_address
+    else
+      IFS=: read h p <<< "$http_address"
+      [[ -n $h ]] && host="$h"
+      [[ -n $p ]] && port="$p"
+    fi
+  fi
+
+  printf "=====$major_version_number $version\n"
+
+  if [ $major_version_number -lt 3 ]; then
+    sed -i.bak "/org\.neo4j\.server\.webserver\.address=/s/^#[ \t]*//g" \
+      ${path}/neo4j-server.properties
+    sed -i.bak "/org\.neo4j\.server\.webserver\.address=/s/[0-9]\.[0-9]\.[0-9]\.[0-9]/$host/" \
+      ${path}/neo4j-server.properties
+    sed -i.bak "/^\(org\.neo4j\.server\.webserver\.port=\).*/s//\1$port/" \
+      ${path}/neo4j-server.properties
+  else
+    sed -i.bak "/dbms\.connector\.http\.address=/s/^#[ \t]*//g" \
+      ${path}/neo4j.conf
+    sed -i.bak -E "/dbms\.connector\.http\.address/s/=.*\:[0-9]+$/=$host:$port/" \
+      ${path}/neo4j.conf
+  fi
+}
+
+function set_https_address {
+  local default_https_address=$DEFAULT_HTTPS_ADDRESS
+  local major_version_number=${version%%.*}
+  local instance_name=$1
+  local https_address=$2
+  local http_address=$(get_http_address "$instance_name")
+  local path=${INEO_HOME}/instances/${instance_name}/conf
+
+  printf "ins: $instance_name https: $https_address"
+
+  IFS=: read host port <<< "$default_https_address"
+  IFS=: read _host _port <<< "$http_address"
+
+  local default_port="${port}"
+
+  if [[ -n $https_address ]] ; then
+    if [ "$https_address" -eq "$https_address" ] 2>/dev/null; then
+      port=$https_address
+    else
+      IFS=: read h p <<< "$https_address"
+      [[ -n $h ]] && host="$h"
+      [[ -n $p ]] && port="$p"
+      [[ ! -n $p ]] && [[ "$default_port" = "$port" ]] && port=$((_port + 1))
+    fi
+  else
+    port=$((_port + 1))
+  fi
+
+  if [ $major_version_number -lt 3 ]; then
+    sed -i.bak "/^\(org\.neo4j\.server\.webserver\.https\.port=\).*/s//\1$port/" \
+      ${INEO_HOME}/instances/${instance_name}/conf/neo4j-server.properties
+  else
+    sed -i.bak "/dbms\.connector\.https\.address=/s/^#[ \t]*//" \
+      ${path}/neo4j.conf
+    sed -i.bak -E "/dbms\.connector\.https\.address/s/=.*\:[0-9]+$/=$host:$port/" \
+      ${path}/neo4j.conf
+  fi
+}
+
+function set_bolt_address {
+  local default_bolt_address=$DEFAULT_BOLT_ADDRESS
+  local major_version_number=${version%%.*}
+  local instance_name=$1
+  local bolt_address=$2
+  local http_address=$(get_http_address "$instance_name")
+  local path=${INEO_HOME}/instances/${instance_name}/conf
+
+  IFS=: read host port <<< "$default_bolt_address"
+  IFS=: read _host _port <<< "$http_address"
+
+  local default_port="${port}"
+
+  if [[ -n $bolt_address ]] ; then
+    if [ "$bolt_address" -eq "$bolt_address" ] 2>/dev/null; then
+      port=$bolt_address
+    else
+      IFS=: read h p <<< "$bolt_address"
+      [[ -n $h ]] && host="$h"
+      [[ -n $p ]] && port="$p"
+      [[ ! -n $p ]] && [[ "$default_port" = "$port" ]] && port=$((_port + 2))
+    fi
+  else
+    port=$((_port + 2))
+  fi
+
+  if [[ -n $bolt_address ]] && [ $major_version_number -gt 2 ]; then
+    sed -i.bak "/dbms\.connector\.bolt\.address=/s/^#[ \t]*//" \
+      ${path}/neo4j.conf
+    sed -i.bak -E "/dbms\.connector\.bolt\.address/s/=.*\:[0-9]+$/=$host:$port/" \
+      ${path}/neo4j.conf
+  fi
+}
+
+function get_http_address {
+  local major_version_number=${version%%.*}
+  local address=$DEFAULT_HTTP_ADDRESS
+  local instance_name=$1
+
+  if [ $major_version_number -lt 3 ]; then
+    port=$(sed -n '/^org\.neo4j\.server\.webserver\.port=\(.*\)$/s//\1/p' \
+      $INEO_HOME/instances/$instance_name/conf/neo4j-server.properties)
+    host=$(sed -n '/^org\.neo4j\.server\.webserver\.address=\(.*\)$/s//\1/p' \
+      $INEO_HOME/instances/$instance_name/conf/neo4j-server.properties)
+    address="$host:$port"
+  else
+    address=$(sed -n '/^dbms\.connector\.http\.address=\(.*\)$/s//\1/p' \
+      $INEO_HOME/instances/$instance_name/conf/neo4j.conf)
+  fi
+  echo "$address"
+}
+
+function get_https_address {
+  local major_version_number=${version%%.*}
+  local address=$DEFAULT_HTTPS_ADDRESS
+  local instance_name=$1
+
+  if [ $major_version_number -lt 3 ]; then
+    port=$(sed -n '/^org\.neo4j\.server\.webserver\.https\.port=\(.*\)$/s//\1/p' \
+      $INEO_HOME/instances/$instance_name/conf/neo4j-server.properties)
+    host=$(sed -n '/^org\.neo4j\.server\.webserver\.address=\(.*\)$/s//\1/p' \
+      $INEO_HOME/instances/$instance_name/conf/neo4j-server.properties)
+    address="$host:$port"
+  else
+    address=$(sed -n '/^dbms\.connector\.https\.address=\(.*\)$/s//\1/p' \
+      $INEO_HOME/instances/$instance_name/conf/neo4j.conf)
+  fi
+  echo "$address"
+}
+
+function get_bolt_address {
+  local major_version_number=${version%%.*}
+  local instance_name=$1
+  local address
+
+  if [ $major_version_number -gt 2 ]; then
+    address=$(sed -n '/^dbms\.connector\.bolt\.address=\(.*\)$/s//\1/p' \
+      $INEO_HOME/instances/$instance_name/conf/neo4j.conf)
+  fi
+  echo "$address"
+}
 
 # ==============================================================================
 # SET-PORT
@@ -1213,6 +1214,7 @@ HELP="
   COMMANDS:
 
     create      Create a new instance with a specific <name>
+    set-address Change the address of a specific instance <name>
     set-port    Change the port of a specific instance <name>
     versions    Show the Neo4j versions available for installation
     instances   Show the information about installed instances
@@ -1246,7 +1248,7 @@ HELP_CREATE="
     <instance_name>  Instance name to create
 
   OPTIONS:
-    -p <port>     Http server port for the Neo4j instance.
+    -a <port>     Http server port for the Neo4j instance.
 
                   Default: 7474
 
@@ -1257,6 +1259,31 @@ HELP_CREATE="
     -v <version>  The Neo4j version for the instance
 
                   Default: $DEFAULT_VERSION
+
+"
+
+HELP_SET_ADDRESS="
+  USAGE:
+    set-address [options] <instance_name>
+
+  DESCRIPTION:
+    Change the address of a specific instance
+
+  ARGUMENTS:
+    <instance_name>   Instance name to change
+
+  OPTIONS:
+    -a <address>      Http server port for the Neo4j instance.
+
+                      Default: 0.0.0.0:7474
+
+    -b <address>      Bolt server address for the Neo4j instance.
+
+                      Default: 0.0.0.0:<port>+2 (7476 when port is 7474)
+
+    -s <address>      Https server address (SSL) for the Neo4j instance
+
+                      Default: localhost:<port>+1 (7475 when port is 7474)
 
 "
 
@@ -1526,6 +1553,9 @@ case $COMMAND in
     ;;
   delete-db)
     delete-db $@
+    ;;
+  set-address)
+    set-address $@
     ;;
   set-port)
     set-port $@
