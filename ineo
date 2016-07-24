@@ -273,7 +273,7 @@ function version {
     exit 1
   fi
 
-  printf "\n  The installed version of ineo is ${BOLD}${VERSION}${NF}\n\n"
+  printf "${BOLD}${VERSION}${NF}\n"
 }
 
 # ==============================================================================
